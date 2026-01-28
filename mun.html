@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cloud Loader</title>
+
+<style>
+body{
+  margin:0;
+  height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#000;
+}
+
+/* Cloud */
+.loader{
+  position:relative;
+  width:120px;
+  height:40px;
+  background:#fff;
+  border-radius:100px;
+}
+
+.loader::before{
+  content:"";
+  position:absolute;
+  width:50px;
+  height:50px;
+  background:#fff;
+  border-radius:50%;
+  top:-25px;
+  left:15px;
+}
+
+.loader::after{
+  content:"";
+  position:absolute;
+  width:70px;
+  height:70px;
+  background:#fff;
+  border-radius:50%;
+  top:-45px;
+  right:10px;
+}
+
+/* Rain container */
+.rain{
+  position:absolute;
+  top:50px;
+  left:50%;
+  transform:translateX(-50%);
+  width:120px;
+  height:100px;
+  overflow:hidden;
+}
+
+/* Drops */
+.drop{
+  position:absolute;
+  width:3px;
+  height:8px;
+  background:#fff;
+  border-radius:2px;
+  animation: rain 1.5s linear infinite;
+  opacity:0.8;
+}
+
+/* Multiple drops */
+.drop:nth-child(1){ left:10px; animation-delay:0s;}
+.drop:nth-child(2){ left:30px; animation-delay:.2s;}
+.drop:nth-child(3){ left:50px; animation-delay:.4s;}
+.drop:nth-child(4){ left:70px; animation-delay:.1s;}
+.drop:nth-child(5){ left:90px; animation-delay:.3s;}
+.drop:nth-child(6){ left:20px; animation-delay:.5s;}
+.drop:nth-child(7){ left:40px; animation-delay:.6s;}
+.drop:nth-child(8){ left:60px; animation-delay:.8s;}
+.drop:nth-child(9){ left:80px; animation-delay:1s;}
+
+@keyframes rain{
+  0%{
+    top:-10px;
+    opacity:0;
+  }
+  30%{
+    opacity:1;
+  }
+  100%{
+    top:110px;
+    opacity:0;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div style="position:relative;">
+  <div class="loader"></div>
+
+  <div class="rain">
+    <div class="drop"></div>
+    <div class="drop"></div>
+    <div class="drop"></div>
+    <div class="drop"></div>
+    <div class="drop"></div>
+    <div class="drop"></div>
+    <div class="drop"></div>
+    <div class="drop"></div>
+    <div class="drop"></div>
+  </div>
+</div>
+
+</body>
+</html>

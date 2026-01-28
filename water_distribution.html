@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APWRIMS - Water Flow Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f8f9fa;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c5aa0 0%, #1e4589 100%);
+            color: white;
+            padding: 12px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #2c5aa0;
+            font-size: 16px;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 2px;
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            opacity: 0.95;
+            margin-top: 2px;
+        }
+
+        .search-box {
+            background: white;
+            padding: 8px 15px;
+            border-radius: 4px;
+            color: #666;
+            font-size: 13px;
+            width: 250px;
+            border: none;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: calc(100vh - 70px);
+            background: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #visualization {
+            width: 100%;
+            height: 100%;
+        }
+
+        .connection-path {
+            fill: none;
+            stroke: #90CAF9;
+            stroke-width: 2;
+            opacity: 0.6;
+        }
+
+        .main-connection {
+            stroke: #64B5F6;
+            stroke-width: 2.5;
+            opacity: 0.7;
+        }
+
+        .node-circle {
+            fill: #2196F3;
+            stroke: #1565C0;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node-circle:hover {
+            fill: #1976D2;
+            filter: drop-shadow(0 0 8px rgba(33, 150, 243, 0.6));
+        }
+
+        .region-circle {
+            fill: #1E88E5;
+            stroke: #1565C0;
+            stroke-width: 2;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .region-circle:hover {
+            fill: #1976D2;
+            filter: drop-shadow(0 0 8px rgba(30, 136, 229, 0.6));
+        }
+
+        .municipality-rect {
+            fill: #FFA726;
+            stroke: #F57C00;
+            stroke-width: 1.5;
+            rx: 3;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .municipality-rect:hover {
+            fill: #FB8C00;
+            filter: drop-shadow(0 0 6px rgba(255, 167, 38, 0.6));
+        }
+
+        .town-square {
+            fill: #FFD54F;
+            stroke: #FFA000;
+            stroke-width: 1.5;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .town-square:hover {
+            fill: #FFC107;
+            filter: drop-shadow(0 0 5px rgba(255, 193, 7, 0.7));
+        }
+
+        .node-text {
+            font-size: 11px;
+            fill: white;
+            text-anchor: middle;
+            pointer-events: none;
+            font-weight: 500;
+        }
+
+        .root-text {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .municipality-text {
+            font-size: 10px;
+            fill: #1a237e;
+            text-anchor: middle;
+            pointer-events: none;
+            font-weight: 600;
+        }
+
+        .flow-dot {
+            fill: #4FC3F7;
+            opacity: 0.9;
+        }
+
+        /* Info Box Styles */
+        .info-box {
+            position: absolute;
+            background: white;
+            border: 2px solid #2c5aa0;
+            border-radius: 8px;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            min-width: 250px;
+        }
+
+        .info-box.visible {
+            opacity: 1;
+        }
+
+        .info-box-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #2c5aa0;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #e3f2fd;
+            padding-bottom: 5px;
+        }
+
+        .info-box-subtitle {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555;
+            margin-top: 8px;
+            margin-bottom: 5px;
+        }
+
+        .info-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-list li {
+            padding: 3px 0;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .info-list li:before {
+            content: "▸ ";
+            color: #2196F3;
+            font-weight: bold;
+        }
+
+        /* Water Usage Table - Simplified */
+        .usage-table {
+            position: absolute;
+            background: white;
+            border: 2px solid #2c5aa0;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1001;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            min-width: 320px;
+        }
+
+        .usage-table.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .usage-table-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #2c5aa0;
+            margin-bottom: 15px;
+            text-align: center;
+            border-bottom: 2px solid #2c5aa0;
+            padding-bottom: 8px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #666;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .close-btn:hover {
+            color: #d32f2f;
+        }
+
+        .usage-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            margin: 8px 0;
+            background: #f5f5f5;
+            border-radius: 6px;
+            border-left: 4px solid #2196F3;
+            transition: all 0.3s;
+        }
+
+        .usage-item:hover {
+            background: #e3f2fd;
+            transform: translateX(5px);
+        }
+
+        .usage-item.drinking {
+            border-left-color: #2196F3;
+        }
+
+        .usage-item.irrigation {
+            border-left-color: #4CAF50;
+        }
+
+        .usage-item.industrial {
+            border-left-color: #FF9800;
+        }
+
+        .usage-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+        }
+
+        .usage-icon {
+            font-size: 18px;
+            margin-right: 10px;
+        }
+
+        .usage-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2c5aa0;
+        }
+
+        .usage-unit {
+            font-size: 10px;
+            color: #666;
+            margin-left: 4px;
+        }
+
+        .table-note {
+            font-size: 10px;
+            color: #666;
+            margin-top: 15px;
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* Tooltip for towns */
+        .town-tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            max-width: 200px;
+        }
+
+        .town-tooltip.visible {
+            opacity: 1;
+        }
+
+        .town-tooltip-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            padding-bottom: 3px;
+        }
+
+        .town-list {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .town-list li {
+            padding: 2px 0;
+        }
+
+        .town-list li:before {
+            content: "• ";
+            color: #4FC3F7;
+        }
+
+        /* Info button */
+        .info-btn {
+            position: absolute;
+            top: 85px;
+            left: 15px;
+            width: 38px;
+            height: 38px;
+            background: #2196F3;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            transition: all 0.3s ease;
+            font-weight: bold;
+        }
+
+        .info-btn:hover {
+            background: #1976D2;
+            transform: scale(1.1);
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 12px 15px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            font-size: 11px;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+        }
+
+        .legend-color {
+            width: 18px;
+            height: 18px;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-left">
+            <div class="logo">AP</div>
+            <div>
+                <div class="header-title">A P W R I M S</div>
+                <div class="header-subtitle">Andhra Pradesh Water Resources Information & Management System</div>
+            </div>
+        </div>
+        <input type="text" class="search-box" placeholder="Search Here">
+    </div>
+
+    <div id="canvas-container">
+        <svg id="visualization"></svg>
+        <div class="info-btn" id="infoBtnToggle">ⓘ</div>
+        <div class="town-tooltip" id="tooltip"></div>
+        <div class="info-box" id="infoBox"></div>
+        
+        <!-- Simplified Water Usage Display -->
+        <div class="usage-table" id="usageTable">
+            <button class="close-btn" onclick="hideUsageTable()">✕</button>
+            <div class="usage-table-title">Water Usage Demands</div>
+            
+            <div class="usage-item drinking">
+                <div class="usage-label">
+                    <span class="usage-icon">💧</span>
+                    Drinking Water
+                </div>
+                <div class="usage-value">
+                    537.2 <span class="usage-unit">TMC</span>
+                </div>
+            </div>
+
+            <div class="usage-item irrigation">
+                <div class="usage-label">
+                    <span class="usage-icon">🌾</span>
+                    Irrigation
+                </div>
+                <div class="usage-value">
+                    693.3 <span class="usage-unit">TMC</span>
+                </div>
+            </div>
+
+            <div class="usage-item industrial">
+                <div class="usage-label">
+                    <span class="usage-icon">🏭</span>
+                    Industrial
+                </div>
+                <div class="usage-value">
+                    125.5 <span class="usage-unit">TMC</span>
+                </div>
+            </div>
+
+            <div class="table-note">TMC = Thousand Million Cubic feet | Data as of Jan 2026</div>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-title">Legend</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #2196F3; border-radius: 50%;"></div>
+            <span>Water Source/Region</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FFA726;"></div>
+            <span>Municipality</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #FFD54F;"></div>
+            <span>Town/City (hover to view)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4FC3F7; border-radius: 50%;"></div>
+            <span>Water Flow</span>
+        </div>
+    </div>
+
+    <script>
+        const width = window.innerWidth;
+        const height = window.innerHeight - 70;
+        const svg = document.getElementById('visualization');
+        svg.setAttribute('width', width);
+        svg.setAttribute('height', height);
+
+        // Information data for each region
+        const regionInfo = {
+            "Andhra Pradesh": {
+                title: "Andhra Pradesh",
+                subtitle: "Major Rivers",
+                items: [
+                    "Godavari",
+                    "Krishna",
+                    "Penna",
+                    "Tungabhadra"
+                ]
+            },
+            "Rayalaseema": {
+                title: "Rayalaseema Region",
+                subtitle: "Major Reservoirs",
+                items: [
+                    "Srisailam Dam",
+                    "Somasila",
+                    "Gandikota",
+                    "Brahmam Sagar"
+                ]
+            },
+            "Coastal Andhra": {
+                title: "Coastal Andhra Region",
+                subtitle: "Major Reservoirs",
+                items: [
+                    "Dowleswaram Barrage",
+                    "Prakasam Barrage",
+                    "Mopadu Reservoir",
+                    "Yeleru Reservoir"
+                ]
+            }
+        };
+
+        // Towns data for each municipality
+        const townsData = {
+            "Anantapur": ["Tadipatri", "Hindupur"],
+            "Kadapa": ["Badvel", "Mydukur", "Pulivendula"],
+            "Kurnool": ["Adoni", "Yemmiganur"],
+            "Nellore": ["Gudur", "Naidupeta", "Sullurpeta", "Venkatagiri"],
+            "Kakinada": ["Konaseema Region"],
+            "Rajahmundry": ["Amalapuram", "Mandapeta", "Pithapuram"],
+            "Vizianagaram": ["Anakapalli", "Gajuwaka"],
+            "Vijayawada": ["Machilipatnam", "Nuzvid", "Jaggaiahpet"],
+            "Guntur": ["Tenali", "Bapatla", "Chirala"]
+        };
+
+        // IMPROVED LAYOUT - Better spacing and positioning
+        const data = {
+            root: {
+                name: "Andhra Pradesh",
+                x: width / 2,
+                y: 130,
+                radius: 75
+            },
+            regions: [
+                {
+                    name: "Rayalaseema",
+                    x: width * 0.28,
+                    y: 350,
+                    radius: 60,
+                    municipalities: [
+                        { name: "Anantapur", x: width * 0.10, y: 230 },
+                        { name: "Kurnool", x: width * 0.08, y: 430 },
+                        { name: "Kadapa", x: width * 0.40, y: 240 },
+                        { name: "Nellore", x: width * 0.44, y: 500 }
+                    ]
+                },
+                {
+                    name: "Coastal Andhra",
+                    x: width * 0.72,
+                    y: 350,
+                    radius: 60,
+                    municipalities: [
+                        { name: "Kakinada", x: width * 0.90, y: 200 },
+                        { name: "Guntur", x: width * 0.58, y: 210 },
+                        { name: "Rajahmundry", x: width * 0.90, y: 350 },
+                        { name: "Vijayawada", x: width * 0.56, y: 490 },
+                        { name: "Vizianagaram", x: width * 0.92, y: 500 }
+                    ]
+                }
+            ]
+        };
+
+        // Create SVG groups
+        const pathsGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const flowGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const nodesGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        
+        svg.appendChild(pathsGroup);
+        svg.appendChild(flowGroup);
+        svg.appendChild(nodesGroup);
+
+        // Helper: Create smooth curved path
+        function createSmoothPath(x1, y1, x2, y2, curve = 0.25) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            // Control point offset
+            const offsetX = -dy * curve;
+            const offsetY = dx * curve;
+            
+            const cx = (x1 + x2) / 2 + offsetX;
+            const cy = (y1 + y2) / 2 + offsetY;
+            
+            return `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`;
+        }
+
+        // Store all connection data for animation
+        const connections = [];
+
+        // 1. Draw connections from root to regions (6 dots each)
+        data.regions.forEach((region, idx) => {
+            // Calculate angle for separation
+            const angle = idx === 0 ? 210 : -30; // Left region vs right region
+            const angleRad = angle * Math.PI / 180;
+            
+            const rootX = data.root.x + Math.cos(angleRad) * data.root.radius;
+            const rootY = data.root.y + Math.sin(angleRad) * data.root.radius;
+            
+            // Connection point on region
+            const toAngle = Math.atan2(rootY - region.y, rootX - region.x);
+            const regionX = region.x + Math.cos(toAngle) * region.radius;
+            const regionY = region.y + Math.sin(toAngle) * region.radius;
+            
+            const pathData = createSmoothPath(rootX, rootY, regionX, regionY, 0.2);
+            
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathData);
+            path.setAttribute('class', 'connection-path main-connection');
+            pathsGroup.appendChild(path);
+            
+            connections.push({
+                path: path,
+                dotCount: 6,
+                dotRadius: 4,
+                speed: 0.004
+            });
+        });
+
+        // 2. Draw municipality connections and nodes
+        data.regions.forEach(region => {
+            region.municipalities.forEach(muni => {
+                // Connection from region to municipality (4 dots)
+                const angle = Math.atan2(muni.y - region.y, muni.x - region.x);
+                const startX = region.x + Math.cos(angle) * region.radius;
+                const startY = region.y + Math.sin(angle) * region.radius;
+                
+                const pathData = createSmoothPath(startX, startY, muni.x, muni.y, 0.15);
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathData);
+                path.setAttribute('class', 'connection-path');
+                pathsGroup.appendChild(path);
+                
+                connections.push({
+                    path: path,
+                    dotCount: 4,
+                    dotRadius: 3.5,
+                    speed: 0.005
+                });
+
+                // Municipality rectangle
+                const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                rect.setAttribute('x', muni.x - 42);
+                rect.setAttribute('y', muni.y - 18);
+                rect.setAttribute('width', 84);
+                rect.setAttribute('height', 36);
+                rect.setAttribute('class', 'municipality-rect');
+                nodesGroup.appendChild(rect);
+                
+                // Municipality text
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', muni.x);
+                text.setAttribute('y', muni.y + 4);
+                text.setAttribute('class', 'municipality-text');
+                text.textContent = muni.name;
+                nodesGroup.appendChild(text);
+
+                // 3. Add town squares if towns exist (2 dots)
+                if (townsData[muni.name]) {
+                    const towns = townsData[muni.name];
+                    const townCount = Math.min(towns.length, 3);
+                    const angleStep = 45;
+                    const startAngle = -(townCount - 1) * angleStep / 2;
+
+                    for (let idx = 0; idx < townCount; idx++) {
+                        const townAngle = (startAngle + idx * angleStep) * Math.PI / 180;
+                        const distance = 95;
+                        const townX = muni.x + Math.cos(townAngle) * distance;
+                        const townY = muni.y + Math.sin(townAngle) * distance;
+
+                        // Connection to town (2 dots)
+                        const townPathData = createSmoothPath(
+                            muni.x + Math.cos(townAngle) * 42,
+                            muni.y + Math.sin(townAngle) * 18,
+                            townX,
+                            townY,
+                            0.08
+                        );
+                        
+                        const townPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        townPath.setAttribute('d', townPathData);
+                        townPath.setAttribute('class', 'connection-path');
+                        townPath.style.strokeWidth = '1.5';
+                        pathsGroup.appendChild(townPath);
+                        
+                        connections.push({
+                            path: townPath,
+                            dotCount: 2,
+                            dotRadius: 3,
+                            speed: 0.006
+                        });
+
+                        // Town square
+                        const square = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        square.setAttribute('x', townX - 13);
+                        square.setAttribute('y', townY - 13);
+                        square.setAttribute('width', 26);
+                        square.setAttribute('height', 26);
+                        square.setAttribute('rx', 3);
+                        square.setAttribute('class', 'town-square');
+                        square.setAttribute('data-towns', towns.join(', '));
+                        square.setAttribute('data-municipality', muni.name);
+                        
+                        // Tooltip on hover
+                        square.addEventListener('mouseenter', (e) => showTooltip(e, muni.name, towns));
+                        square.addEventListener('mouseleave', hideTooltip);
+                        
+                        nodesGroup.appendChild(square);
+                    }
+                }
+            });
+
+            // Draw region circle with click handler
+            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            circle.setAttribute('cx', region.x);
+            circle.setAttribute('cy', region.y);
+            circle.setAttribute('r', region.radius);
+            circle.setAttribute('class', 'region-circle');
+            
+            circle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showInfoBox(e, region.name, region.x, region.y);
+            });
+            
+            nodesGroup.appendChild(circle);
+            
+            // Region text
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', region.x);
+            text.setAttribute('y', region.y + 4);
+            text.setAttribute('class', 'node-text');
+            text.textContent = region.name;
+            nodesGroup.appendChild(text);
+        });
+
+        // Draw root node
+        const rootCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        rootCircle.setAttribute('cx', data.root.x);
+        rootCircle.setAttribute('cy', data.root.y);
+        rootCircle.setAttribute('r', data.root.radius);
+        rootCircle.setAttribute('class', 'node-circle');
+        
+        rootCircle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showInfoBox(e, data.root.name, data.root.x, data.root.y);
+        });
+        
+        nodesGroup.appendChild(rootCircle);
+
+        const rootText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        rootText.setAttribute('x', data.root.x);
+        rootText.setAttribute('y', data.root.y + 5);
+        rootText.setAttribute('class', 'node-text root-text');
+        rootText.textContent = data.root.name;
+        nodesGroup.appendChild(rootText);
+
+        // Create flow dots
+        const flowDots = [];
+        
+        connections.forEach(conn => {
+            const groupCount = 2;
+            const gapRatio = 0.35;
+            
+            for (let group = 0; group < groupCount; group++) {
+                for (let i = 0; i < conn.dotCount; i++) {
+                    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    dot.setAttribute('r', conn.dotRadius);
+                    dot.setAttribute('class', 'flow-dot');
+                    flowGroup.appendChild(dot);
+                    
+                    const totalDots = conn.dotCount * groupCount + (groupCount - 1) * gapRatio * conn.dotCount;
+                    const groupOffset = group * (conn.dotCount + gapRatio * conn.dotCount);
+                    const offset = (groupOffset + i) / totalDots;
+                    
+                    flowDots.push({
+                        element: dot,
+                        path: conn.path,
+                        offset: offset,
+                        speed: conn.speed
+                    });
+                }
+            }
+        });
+
+        // Animation loop
+        let animationTime = 0;
+        
+        function animate() {
+            animationTime += 1;
+            
+            flowDots.forEach(dot => {
+                const progress = (dot.offset + animationTime * dot.speed) % 1;
+                const length = dot.path.getTotalLength();
+                const point = dot.path.getPointAtLength(progress * length);
+                
+                dot.element.setAttribute('cx', point.x);
+                dot.element.setAttribute('cy', point.y);
+                
+                const fadeProgress = Math.sin(progress * Math.PI);
+                dot.element.setAttribute('opacity', fadeProgress * 0.9);
+            });
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+
+        // Info Box Functions
+        const infoBox = document.getElementById('infoBox');
+
+        function showInfoBox(event, regionName, centerX, centerY) {
+            const info = regionInfo[regionName];
+            if (!info) return;
+
+            let html = `<div class="info-box-title">${info.title}</div>`;
+            html += `<div class="info-box-subtitle">${info.subtitle}</div>`;
+            html += '<ul class="info-list">';
+            info.items.forEach(item => {
+                html += `<li>${item}</li>`;
+            });
+            html += '</ul>';
+            
+            infoBox.innerHTML = html;
+            
+            const boxWidth = 250;
+            let left = centerX + 100;
+            let top = centerY - 50;
+            
+            if (left + boxWidth > width) left = centerX - boxWidth - 100;
+            if (top < 70) top = 70;
+            
+            infoBox.style.left = left + 'px';
+            infoBox.style.top = top + 'px';
+            infoBox.classList.add('visible');
+        }
+
+        function hideInfoBox() {
+            infoBox.classList.remove('visible');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!infoBox.contains(e.target)) hideInfoBox();
+        });
+
+        // Water Usage Table Functions
+        const usageTable = document.getElementById('usageTable');
+        const infoBtnToggle = document.getElementById('infoBtnToggle');
+
+        infoBtnToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (usageTable.classList.contains('visible')) {
+                hideUsageTable();
+            } else {
+                showUsageTable();
+            }
+        });
+
+        function showUsageTable() {
+            usageTable.style.left = '70px';
+            usageTable.style.top = '80px';
+            usageTable.classList.add('visible');
+            hideInfoBox();
+        }
+
+        function hideUsageTable() {
+            usageTable.classList.remove('visible');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!usageTable.contains(e.target) && e.target.id !== 'infoBtnToggle') {
+                hideUsageTable();
+            }
+        });
+
+        // Town Tooltip
+        const tooltip = document.getElementById('tooltip');
+        
+        function showTooltip(event, municipality, towns) {
+            const rect = event.target.getBoundingClientRect();
+            
+            let html = `<div class="town-tooltip-title">${municipality} - Towns</div>`;
+            html += '<ul class="town-list">';
+            towns.forEach(town => {
+                html += `<li>${town}</li>`;
+            });
+            html += '</ul>';
+            
+            tooltip.innerHTML = html;
+            tooltip.style.left = (rect.left + rect.width + 10) + 'px';
+            tooltip.style.top = (rect.top) + 'px';
+            tooltip.classList.add('visible');
+        }
+        
+        function hideTooltip() {
+            tooltip.classList.remove('visible');
+        }
+    </script>
+</body>
+</html>
