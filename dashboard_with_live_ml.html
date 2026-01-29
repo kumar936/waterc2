@@ -2637,8 +2637,16 @@
             // Unlock body scroll
             document.body.style.overflow = '';
         }
+        // 🚀 BOOTSTRAP – REQUIRED FOR DEPLOYMENT
+window.addEventListener('load', () => {
+    console.log('Page loaded → initializing dashboard');
+    initDashboard();
+    initializeInfoModals();
+});
+
     </script>
 </body>
 </html>
+
 
 
