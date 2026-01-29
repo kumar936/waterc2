@@ -2637,76 +2637,8 @@
             // Unlock body scroll
             document.body.style.overflow = '';
         }
-
-        // ==================== LOADING ANIMATION FIX ====================
-        // Modified updateDashboard function to wait for loading animation before updating stats
-
-        const originalUpdateDashboard = updateDashboard;
-        async function updateDashboard() {
-            const newMunicipality = document.getElementById('municipality-select').value;
-            
-            // Only show loading if municipality actually changed
-            const municipalityChanged = currentMunicipality !== newMunicipality;
-            currentMunicipality = newMunicipality;
-            
-            // Show loading animation ONLY when municipality changes
-            const loadingModal = document.getElementById('loadingModal');
-            if (municipalityChanged) {
-                loadingModal.classList.add('show');
-                
-                // Wait for 500ms to show loading animation before updating stats
-                await new Promise(resolve => setTimeout(resolve, 500));
-            }
-            
-            // Update all titles
-            document.getElementById('alert-title').textContent = `⚠️ High Demand Alert - ${currentMunicipality}`;
-            document.getElementById('stat1-title').textContent = `Current Prediction (${currentMunicipality})`;
-            document.getElementById('stat2-title').textContent = `Average Consumption (${currentMunicipality})`;
-            document.getElementById('stat4-title').textContent = `Population (${currentMunicipality})`;
-            document.getElementById('stat5-title').textContent = `Tomorrow's ML Prediction (${currentMunicipality})`;
-            document.getElementById('scenario-title').textContent = `🔮 Live ML Prediction Simulator (${currentMunicipality})`;
-            document.getElementById('temp-label').textContent = `Temperature in ${currentMunicipality} (°C)`;
-            document.getElementById('forecast-title').textContent = `📈 7-Day Forecast (${currentMunicipality} - Live ML)`;
-            document.getElementById('hourly-title').textContent = `⏰ Hourly Consumption Pattern (${currentMunicipality})`;
-            document.getElementById('temp-impact-title').textContent = `🌡️ Temperature Impact (${currentMunicipality} - Live ML)`;
-            document.getElementById('weekly-title').textContent = `📊 Week-over-Week Comparison (${currentMunicipality} - Live ML)`;
-            
-            // Update stats with animation AFTER loading animation shows
-            if (municipalityData[currentMunicipality]) {
-                const mData = municipalityData[currentMunicipality];
-                // Use rolling animation for stats - NOW HAPPENS AFTER LOADING ANIMATION
-                animateRollingNumber('stat2-value', `${mData.predicted_ml}`, 'M L');
-                animateRollingNumber('stat4-value', `${mData.population}`, '', true);
-                animateRollingNumber('stat5-value', `${mData.predicted_ml}`, 'M L');
-                document.getElementById('stat5-change').textContent = `Tomorrow's forecast`;
-            }
-            
-            // Get fresh prediction and update charts
-            try {
-                await runScenario();
-                await updateForecastChart();
-                await updateTempImpactChart();
-                await updateWeeklyChart();
-                updateHourlyChart();
-            } catch (error) {
-                console.error('Error updating dashboard:', error);
-            } finally {
-                // Hide loading animation after data is loaded (only if it was shown)
-                if (municipalityChanged) {
-                    setTimeout(() => {
-                        loadingModal.classList.remove('show');
-                    }, 2000);
-                }
-            }
-        }
-
-        // Initialize dashboard on page load
-        window.addEventListener('load', function() {
-            initDashboard();
-            // Initialize info modals after DOM is ready
-            initializeInfoModals();
-        });
     </script>
 </body>
 </html>
+
 
